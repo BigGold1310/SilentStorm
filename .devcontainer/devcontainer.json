@@ -1,0 +1,16 @@
+{
+  "name": "Go",
+  "image": "mcr.microsoft.com/devcontainers/go:1",
+  "postStartCommand": "bash .devcontainer/postStartCommand.sh",
+  // Configure tool-specific properties.
+  "customizations": {
+    // Configure properties specific to VS Code.
+    "vscode": {
+      "settings": {},
+      "extensions": [
+        "streetsidesoftware.code-spell-checker",
+        "golang.go"
+      ]
+    }
+  }
+}
