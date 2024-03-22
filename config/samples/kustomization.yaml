@@ -1,0 +1,6 @@
+## Append samples of your project ##
+resources:
+- silentstorm_v1alpha1_silence.yaml
+- silentstorm_v1alpha1_clustersilence.yaml
+- silentstorm_v1alpha1_alertmanager.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

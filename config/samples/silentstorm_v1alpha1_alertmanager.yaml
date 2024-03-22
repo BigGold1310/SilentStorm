@@ -1,0 +1,12 @@
+apiVersion: silentstorm.biggold1310.ch/v1alpha1
+kind: Alertmanager
+metadata:
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager-sample
+    app.kubernetes.io/part-of: silentstorm
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: silentstorm
+  name: alertmanager-sample
+spec:
+  # TODO(user): Add fields here

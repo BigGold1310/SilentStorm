@@ -1,0 +1,31 @@
+# permissions for end users to edit clustersilences.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: clustersilence-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: silentstorm
+    app.kubernetes.io/part-of: silentstorm
+    app.kubernetes.io/managed-by: kustomize
+  name: clustersilence-editor-role
+rules:
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - clustersilences
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - clustersilences/status
+  verbs:
+  - get

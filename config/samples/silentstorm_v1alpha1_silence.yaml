@@ -1,0 +1,12 @@
+apiVersion: silentstorm.biggold1310.ch/v1alpha1
+kind: Silence
+metadata:
+  labels:
+    app.kubernetes.io/name: silence
+    app.kubernetes.io/instance: silence-sample
+    app.kubernetes.io/part-of: silentstorm
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: silentstorm
+  name: silence-sample
+spec:
+  # TODO(user): Add fields here
