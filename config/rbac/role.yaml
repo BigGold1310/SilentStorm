@@ -1,15 +1,32 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: manager-role
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: silentstorm
-    app.kubernetes.io/part-of: silentstorm
-    app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - alertmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - alertmanagers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - alertmanagers/status
+  verbs:
+  - get
+  - patch
+  - update

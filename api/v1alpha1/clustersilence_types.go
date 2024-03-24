@@ -25,17 +25,13 @@ import (
 
 // ClusterSilenceSpec defines the desired state of ClusterSilence
 type ClusterSilenceSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ClusterSilence. Edit clustersilence_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	AlertmanagerSilence `json:",inline"`
 }
 
 // ClusterSilenceStatus defines the observed state of ClusterSilence
 type ClusterSilenceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	AlertmanagerReferences []AlertmanagerReference `json:"alertmanagerReferences,omitempty"`
+	Conditions             []metav1.Condition      `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

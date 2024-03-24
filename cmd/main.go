@@ -122,18 +122,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.SilenceReconciler{
+	if err = (&controller.AlertmanagerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Silence")
-		os.Exit(1)
-	}
-	if err = (&controller.ClusterSilenceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ClusterSilence")
+		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
