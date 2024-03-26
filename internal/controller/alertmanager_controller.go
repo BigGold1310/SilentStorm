@@ -25,6 +25,7 @@ import (
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
 	"github.com/go-openapi/strfmt"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -88,12 +89,17 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 	for _, clusterSilence := range clusterSilenceList.Items {
+		oldStatus := clusterSilence.Status.DeepCopy()
+
 		alertmanagerReference := silentstormv1alpha1.FindAlertmanagerReference(clusterSilence.Status.AlertmanagerReferences, alertmanager.UID)
 		if alertmanagerReference == nil {
 			if silentstormv1alpha1.SetAlertmanagerReference(&clusterSilence.Status.AlertmanagerReferences, silentstormv1alpha1.NewAlertmanagerReference(*alertmanager)) {
 				alertmanagerReference = silentstormv1alpha1.FindAlertmanagerReference(clusterSilence.Status.AlertmanagerReferences, alertmanager.UID)
 			}
 		}
+
+		r.Alertmanager.Silence.GetSilences()
+		silence.NewGetSilencesParams().SetFilter()
 
 		start := strfmt.DateTime(time.Now().Add(-time.Minute * 5))
 		end := strfmt.DateTime(time.Now().Add(time.Hour * 2))
@@ -108,26 +114,23 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			},
 		}
 		if alertmanagerReference.SilenceID != "" {
-			getSilenceParams := silence.NewGetSilenceParams().WithContext(ctx).WithSilenceID(strfmt.UUID(clusterSilence.Status.SilenceID))
-			getOk, err := r.Alertmanager.Silence.GetSilence(getSilenceParams)
-			if err != nil {
-				log.FromContext(ctx).Error(err, "failed to get silence", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName())
-			}
-			if getOk.IsSuccess() {
-				ps.ID = clusterSilence.Status.SilenceID
-			}
+			ps.ID = alertmanagerReference.SilenceID
 		}
 		silenceParams := silence.NewPostSilencesParams().WithContext(ctx).WithSilence(ps)
-
 		postOk, err := r.Alertmanager.Silence.PostSilences(silenceParams)
 		if err != nil {
 			log.FromContext(ctx).Error(err, "failed to post silence", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName())
-			// TODO: Update Silence with proper error message.
+			alertmanagerReference.Status = err.Error()
+		} else {
+			alertmanagerReference.Status = "Silenced" // TODO: introduce consts for better status tracking/consistency
+			alertmanagerReference.SilenceID = postOk.GetPayload().SilenceID
 		}
-		clusterSilence.Status.SilenceID = postOk.GetPayload().SilenceID
-		err = r.Client.Status().Update(ctx, &clusterSilence)
-		if err != nil {
-			log.FromContext(ctx).Error(err, "failed update silence status with id", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName(), "silenceId", postOk.GetPayload().SilenceID)
+
+		if !equality.Semantic.DeepEqual(oldStatus, &clusterSilence.Status) {
+			err = r.Client.Status().Update(ctx, &clusterSilence)
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed update silence status with id", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName(), "silenceId", postOk.GetPayload().SilenceID)
+			}
 		}
 	}
 
