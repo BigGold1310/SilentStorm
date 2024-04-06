@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -41,6 +43,25 @@ type Matcher struct {
 	Value string `json:"value"`
 }
 
+// ToFilter returns the string filter representation of the matcher.
+func (m *Matcher) ToFilter() string {
+	var condition string
+	if m.IsRegex {
+		if m.IsEqual {
+			condition = "=~"
+		} else {
+			condition = "!~"
+		}
+	} else {
+		if m.IsEqual {
+			condition = "="
+		} else {
+			condition = "!="
+		}
+	}
+	return fmt.Sprintf("%s%s%s", m.Name, condition, m.Value)
+}
+
 // ToMatcher converts the internal AlertmanagerSilence matcher to the openapi matcher.
 func (m Matcher) ToMatcher() *models.Matcher {
 	return &models.Matcher{
@@ -58,6 +79,15 @@ func (m Matchers) ToMatchers() []*models.Matcher {
 	matchers := make([]*models.Matcher, len(m))
 	for i, matcher := range m {
 		matchers[i] = matcher.ToMatcher()
+	}
+	return matchers
+}
+
+// ToFilters converts the internal AlertmanagerSilence matchers to the openapi filters.
+func (m Matchers) ToFilters() []string {
+	matchers := make([]string, len(m))
+	for i, matcher := range m {
+		matchers[i] = matcher.ToFilter()
 	}
 	return matchers
 }

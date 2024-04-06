@@ -18,8 +18,10 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
@@ -38,16 +40,27 @@ import (
 
 	clientruntime "github.com/go-openapi/runtime/client"
 
-	alertmanagerclient "github.com/prometheus/alertmanager/api/v2/client"
-	"github.com/prometheus/alertmanager/api/v2/client/silence"
-	"github.com/prometheus/alertmanager/api/v2/models"
+	amc "github.com/prometheus/alertmanager/api/v2/client"
+	amcsilence "github.com/prometheus/alertmanager/api/v2/client/silence"
+	amcmodels "github.com/prometheus/alertmanager/api/v2/models"
 )
+
+const (
+	createdBy = "SilentStorm Operator"
+)
+
+// AlertmanagerAPIClient is an interface that abstracts the methods of AlertmanagerAPI used by the reconciler.
+type AlertmanagerAPIClient interface {
+	PostSilences(params *amcsilence.PostSilencesParams, opts ...amcsilence.ClientOption) (*amcsilence.PostSilencesOK, error)
+	GetSilence(params *amcsilence.GetSilenceParams, opts ...amcsilence.ClientOption) (*amcsilence.GetSilenceOK, error)
+	GetSilences(params *amcsilence.GetSilencesParams, opts ...amcsilence.ClientOption) (*amcsilence.GetSilencesOK, error)
+}
 
 // AlertmanagerReconciler reconciles a Alertmanager object
 type AlertmanagerReconciler struct {
 	client.Client
 	Scheme       *runtime.Scheme
-	Alertmanager *alertmanagerclient.AlertmanagerAPI
+	Alertmanager *amc.AlertmanagerAPI
 }
 
 //+kubebuilder:rbac:groups=silentstorm.biggold1310.ch,resources=alertmanagers,verbs=get;list;watch;create;update;patch;delete
@@ -98,43 +111,123 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 		}
 
-		r.Alertmanager.Silence.GetSilences()
-		silence.NewGetSilencesParams().SetFilter()
-
-		start := strfmt.DateTime(time.Now().Add(-time.Minute * 5))
-		end := strfmt.DateTime(time.Now().Add(time.Hour * 2))
-		creator := "SilentStorm Operator"
-		ps := &models.PostableSilence{
-			Silence: models.Silence{
-				Matchers:  clusterSilence.Spec.Matchers.ToMatchers(),
-				StartsAt:  &start,
-				EndsAt:    &end,
-				CreatedBy: &creator,
-				Comment:   &clusterSilence.Spec.Comment,
-			},
-		}
+		var existingSilence *amcmodels.GettableSilence
 		if alertmanagerReference.SilenceID != "" {
-			ps.ID = alertmanagerReference.SilenceID
+			existingSilence, err = r.getSilenceByID(ctx, alertmanagerReference.SilenceID)
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed to get silence by id", "id", alertmanagerReference.SilenceID)
+			}
 		}
-		silenceParams := silence.NewPostSilencesParams().WithContext(ctx).WithSilence(ps)
-		postOk, err := r.Alertmanager.Silence.PostSilences(silenceParams)
+		if existingSilence == nil {
+			existingSilence, err = r.searchSilence(ctx, clusterSilence.ObjectMeta)
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed to search silences for already existing one", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName())
+				continue // Lets skip the rest of the loop as we anyway run into an error
+			}
+		}
+
+		silenceID, err := r.postSilence(ctx, existingSilence, clusterSilence.Spec.AlertmanagerSilence, clusterSilence.ObjectMeta)
 		if err != nil {
 			log.FromContext(ctx).Error(err, "failed to post silence", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName())
-			alertmanagerReference.Status = err.Error()
+			alertmanagerReference.Status = err.Error() // TODO: Replace status with conditions
 		} else {
 			alertmanagerReference.Status = "Silenced" // TODO: introduce consts for better status tracking/consistency
-			alertmanagerReference.SilenceID = postOk.GetPayload().SilenceID
+			alertmanagerReference.SilenceID = silenceID
 		}
 
 		if !equality.Semantic.DeepEqual(oldStatus, &clusterSilence.Status) {
 			err = r.Client.Status().Update(ctx, &clusterSilence)
 			if err != nil {
-				log.FromContext(ctx).Error(err, "failed update silence status with id", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName(), "silenceId", postOk.GetPayload().SilenceID)
+				log.FromContext(ctx).Error(err, "failed update silence status with id", "namespace", clusterSilence.GetNamespace(), "name", clusterSilence.GetName(), "silenceId", silenceID)
 			}
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 1 * time.Hour}, nil
+}
+
+// compareMatchers compares two slices of Matchers for equality
+func compareMatchers(m1, m2 amcmodels.Matchers) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+
+	for i := range m1 {
+		if !(m1[i].IsEqual == m2[i].IsEqual && m1[i].Name == m2[i].Name && m1[i].Value == m2[i].Value && m1[i].IsRegex == m2[i].IsRegex) {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *AlertmanagerReconciler) postSilence(ctx context.Context, existingSilence *amcmodels.GettableSilence, silence silentstormv1alpha1.AlertmanagerSilence, om metav1.ObjectMeta) (string, error) {
+	ps := &amcmodels.PostableSilence{}
+	start := strfmt.DateTime(time.Now().UTC().Add(-time.Minute * 5))
+	end := strfmt.DateTime(time.Now().UTC().Add(time.Hour * 8))
+	comment := fmt.Sprintf("%s    \nSilence UUID: %s", silence.Comment, string(om.GetUID()))
+	creator := createdBy
+	ps.Silence.CreatedBy = &creator
+	ps.Silence.StartsAt = &start
+	ps.Silence.EndsAt = &end
+	ps.Silence.Comment = &comment
+	ps.Silence.Matchers = silence.Matchers.ToMatchers()
+
+	if existingSilence != nil {
+		if *existingSilence.Comment == comment && *existingSilence.CreatedBy == creator && compareMatchers(existingSilence.Matchers, ps.Silence.Matchers) {
+			if time.Time(*existingSilence.EndsAt).After(time.Now().UTC().Add(2 * time.Hour)) {
+				log.FromContext(ctx).Info("silence still valid for at least two hours, skipping", "namespace", om.GetNamespace(), "name", om.GetName(), "silenceId", *existingSilence.ID, "expiresAt", *existingSilence.EndsAt)
+				return *existingSilence.ID, nil
+			}
+		}
+		ps.ID = *existingSilence.ID
+	}
+
+	silenceParams := amcsilence.NewPostSilencesParams().WithContext(ctx).WithSilence(ps)
+	postOk, err := r.Alertmanager.Silence.PostSilences(silenceParams)
+	if err != nil {
+		return "", err
+	}
+	return postOk.GetPayload().SilenceID, err
+}
+
+func (r *AlertmanagerReconciler) getSilenceByID(ctx context.Context, silenceID string) (*amcmodels.GettableSilence, error) {
+	getSilenceParams := amcsilence.NewGetSilenceParams().WithContext(ctx).WithSilenceID(strfmt.UUID(silenceID))
+	getOk, err := r.Alertmanager.Silence.GetSilence(getSilenceParams)
+	if err != nil {
+		return nil, err
+	}
+	return getOk.GetPayload(), nil
+}
+
+func (r *AlertmanagerReconciler) searchSilence(ctx context.Context, om metav1.ObjectMeta) (*amcmodels.GettableSilence, error) {
+	getSilenceParams := amcsilence.NewGetSilencesParams().WithContext(ctx)
+	getOk, err := r.Alertmanager.Silence.GetSilences(getSilenceParams)
+	if err != nil {
+		return nil, err
+	}
+
+	existingSilences := []amcmodels.GettableSilence{}
+	for _, silence := range getOk.Payload {
+		// Skip expired silences
+		if time.Time(*silence.EndsAt).Before(time.Now()) {
+			continue
+		}
+		if *silence.CreatedBy != "SilentStorm Operator" {
+			continue
+		}
+		if !strings.Contains(*silence.Comment, string(om.GetUID())) {
+			continue
+		}
+
+		existingSilences = append(existingSilences, *silence)
+	}
+
+	if len(existingSilences) == 1 {
+		return &existingSilences[0], nil
+	} else if len(existingSilences) == 0 {
+		return nil, nil
+	}
+	return nil, errors.New("more than one silence found")
 }
 
 func (r *AlertmanagerReconciler) initAlertmanagerClient(ctx context.Context, alertmanager silentstormv1alpha1.Alertmanager) error {
@@ -164,7 +257,7 @@ func (r *AlertmanagerReconciler) initAlertmanagerClient(ctx context.Context, ale
 			clientruntime.BearerToken(token)
 		}
 
-		c := alertmanagerclient.New(cr, strfmt.Default)
+		c := amc.New(cr, strfmt.Default)
 		r.Alertmanager = c
 	}
 	return nil
