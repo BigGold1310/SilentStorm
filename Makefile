@@ -112,8 +112,17 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate fmt vet envtest mocks ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+
+# generate mocks
+mocks: mockgen
+	$(MOCKGEN) -destination internal/mocks/alertmanager/alert/mock.go github.com/prometheus/alertmanager/api/v2/client/alert ClientService
+	$(MOCKGEN) -destination internal/mocks/alertmanager/alertgroup/mock.go github.com/prometheus/alertmanager/api/v2/client/alertgroup ClientService
+	$(MOCKGEN) -destination internal/mocks/alertmanager/general/mock.go github.com/prometheus/alertmanager/api/v2/client/general ClientService
+	$(MOCKGEN) -destination internal/mocks/alertmanager/receiver/mock.go github.com/prometheus/alertmanager/api/v2/client/receiver ClientService
+	$(MOCKGEN) -destination internal/mocks/alertmanager/silence/mock.go github.com/prometheus/alertmanager/api/v2/client/silence ClientService
+	$(MOCKGEN) -destination internal/mocks/alertmanager/runtime/mock.go github.com/go-openapi/runtime ClientTransport
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
@@ -209,10 +218,12 @@ KUBECTL ?= kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+MOCKGEN ?= ${LOCALBIN}/mockgen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.2.1
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
+MOCKGEN_VERSION ?= v0.4.0
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -227,12 +238,19 @@ $(KUSTOMIZE): $(LOCALBIN)
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION); \
+	mockgen 
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: mockgen
+mockgen: $(MOCKGEN) ## Download mockgen locally if necessary. If wrong version is installed, it will be overwritten.
+$(MOCKGEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/mockgen && $(LOCALBIN)/mockgen -version | grep -q $(MOCKGEN_VERSION) || \
+	GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
 
 .PHONY: operator-sdk
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
