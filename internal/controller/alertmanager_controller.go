@@ -49,13 +49,6 @@ const (
 	createdBy = "SilentStorm Operator"
 )
 
-// AlertmanagerAPIClient is an interface that abstracts the methods of AlertmanagerAPI used by the reconciler.
-type AlertmanagerAPIClient interface {
-	PostSilences(params *amcsilence.PostSilencesParams, opts ...amcsilence.ClientOption) (*amcsilence.PostSilencesOK, error)
-	GetSilence(params *amcsilence.GetSilenceParams, opts ...amcsilence.ClientOption) (*amcsilence.GetSilenceOK, error)
-	GetSilences(params *amcsilence.GetSilencesParams, opts ...amcsilence.ClientOption) (*amcsilence.GetSilencesOK, error)
-}
-
 // AlertmanagerReconciler reconciles a Alertmanager object
 type AlertmanagerReconciler struct {
 	client.Client
@@ -205,11 +198,14 @@ func (r *AlertmanagerReconciler) searchSilence(ctx context.Context, om metav1.Ob
 	if err != nil {
 		return nil, err
 	}
+	if getOk.Payload == nil {
+		return nil, nil
+	}
 
 	existingSilences := []amcmodels.GettableSilence{}
 	for _, silence := range getOk.Payload {
 		// Skip expired silences
-		if time.Time(*silence.EndsAt).Before(time.Now()) {
+		if time.Time(*silence.EndsAt).Before(time.Now()) || *silence.Status.State == amcmodels.SilenceStatusStateExpired {
 			continue
 		}
 		if *silence.CreatedBy != "SilentStorm Operator" {
@@ -249,8 +245,8 @@ func (r *AlertmanagerReconciler) initAlertmanagerClient(ctx context.Context, ale
 
 		cr := clientruntime.New(url.Host, path, schemes)
 
-		if alertmanager.Spec.Authentication.ServiceAccount != "" {
-			token, err := r.getServiceAccountToken(ctx, alertmanager.GetNamespace(), alertmanager.Spec.Authentication.ServiceAccount)
+		if alertmanager.Spec.Authentication.ServiceAccountRef != "" {
+			token, err := r.getServiceAccountToken(ctx, alertmanager.GetNamespace(), alertmanager.Spec.Authentication.ServiceAccountRef)
 			if err != nil {
 				return err
 			}

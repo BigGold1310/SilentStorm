@@ -32,9 +32,9 @@ type AlertmanagerSpec struct {
 
 // Authentication defines the possible authentication options.
 type Authentication struct {
-	// ServiceAccount enables bearer token authentication with the ServiceAccount token.
-	// The ServiceAccount is exptected to be in the same namespace as this Alertmanager.
-	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// ServiceAccountRef enables bearer token authentication with the ServiceAccount token.
+	// The ServiceAccountRef is expected to be in the same namespace as this Alertmanager.
+	ServiceAccountRef string `json:"serviceAccountRef,omitempty"`
 }
 
 // AlertmanagerStatus defines the observed state of Alertmanager
