@@ -28,31 +28,31 @@ import (
 	mock_silence "github.com/biggold1310/silentstorm/internal/mocks/alertmanager/silence"
 	"github.com/biggold1310/silentstorm/internal/test/testdata"
 	testutils "github.com/biggold1310/silentstorm/internal/test/utils"
+	"github.com/go-openapi/strfmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	amc "github.com/prometheus/alertmanager/api/v2/client"
 	amcsilence "github.com/prometheus/alertmanager/api/v2/client/silence"
 	"github.com/prometheus/alertmanager/api/v2/models"
+	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	amc "github.com/prometheus/alertmanager/api/v2/client"
-	"go.uber.org/mock/gomock"
-	gm "go.uber.org/mock/gomock"
+	"time"
 )
 
 var _ = Describe("Alertmanager Controller", func() {
 	Context("When reconciling a resource", func() {
 		var (
-			mockCtrl    *gm.Controller
+			mockCtrl    *gomock.Controller
 			amcmock     *amc.AlertmanagerAPI
 			mockSilence *mock_silence.MockClientService
 			ctx         context.Context
 		)
 		BeforeEach(func() {
 			ctx = context.Background()
-			mockCtrl = gm.NewController(GinkgoT())
+			mockCtrl = gomock.NewController(GinkgoT())
 			mockSilence = mock_silence.NewMockClientService(mockCtrl)
 			amcmock = &amc.AlertmanagerAPI{
 				Alert:      mock_alert.NewMockClientService(mockCtrl),
@@ -122,27 +122,32 @@ var _ = Describe("Alertmanager Controller", func() {
 		})
 
 		It("should not create a new silence if there is already an existing one", func() {
-			silenceID := string(uuid.NewUUID())
-			silenceStatus := models.SilenceStatusStateActive
-			silenceComment := fmt.Sprintf("Test Comment UUID: %s", silenceID)
+			silenceID := uuid.NewUUID()
 
 			mockSilence.EXPECT().GetSilences(gomock.Any()).Return(&amcsilence.GetSilencesOK{Payload: models.GettableSilences{&models.GettableSilence{
-				ID:        &silenceID,
-				Status:    &models.SilenceStatus{State: &silenceStatus},
+				ID:        testutils.ToPtr(string(silenceID)),
+				Status:    &models.SilenceStatus{State: testutils.ToPtr(models.SilenceStatusStateActive)},
 				UpdatedAt: nil,
 				Silence: models.Silence{
-					Comment:   &silenceComment,
-					CreatedBy: nil,
-					EndsAt:    nil,
-					Matchers:  nil,
-					StartsAt:  nil,
+					Comment:   testutils.ToPtr(fmt.Sprintf("test comment    \nSilence UUID: %s", silenceID)),
+					CreatedBy: testutils.ToPtr("SilentStorm Operator"),
+					EndsAt:    testutils.ToPtr(strfmt.DateTime(time.Now().Add(time.Hour * 3))),
+					Matchers: models.Matchers{
+						&models.Matcher{
+							IsEqual: testutils.ToPtr(false),
+							IsRegex: testutils.ToPtr(false),
+							Name:    testutils.ToPtr("test-matcher"),
+							Value:   testutils.ToPtr("test-value"),
+						},
+					},
+					StartsAt: testutils.ToPtr(strfmt.DateTime(time.Now().Add(-time.Hour * 2))),
 				},
 			}}}, nil).Times(1)
 
 			clusterSilence := &silentstormv1alpha1.ClusterSilence{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "test-silence",
-					UID:    uuid.NewUUID(),
+					UID:    silenceID,
 					Labels: map[string]string{"silence": "test-silence"},
 				},
 				Spec: silentstormv1alpha1.ClusterSilenceSpec{
@@ -173,7 +178,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			err = client.Get(ctx, types.NamespacedName{Namespace: "", Name: "test-silence"}, &updatedClusteerSilence)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(updatedClusteerSilence.Status.AlertmanagerReferences)).Should(Equal(1))
-			Expect(updatedClusteerSilence.Status.AlertmanagerReferences[0].SilenceID).Should(Equal(silenceID))
+			Expect(updatedClusteerSilence.Status.AlertmanagerReferences[0].SilenceID).Should(Equal(string(silenceID)))
 			Expect(updatedClusteerSilence.Status.AlertmanagerReferences[0].Name).Should(Equal("alertmanager-1"))
 		})
 	})
