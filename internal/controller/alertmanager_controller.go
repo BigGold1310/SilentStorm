@@ -139,14 +139,14 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{RequeueAfter: 1 * time.Hour}, nil
 }
 
-// compareMatchers compares two slices of Matchers for equality
-func compareMatchers(m1, m2 amcmodels.Matchers) bool {
+// isMatcherEqual compares two slices of Matchers for equality
+func isMatcherEqual(m1, m2 amcmodels.Matchers) bool {
 	if len(m1) != len(m2) {
 		return false
 	}
 
 	for i := range m1 {
-		if !(m1[i].IsEqual == m2[i].IsEqual && m1[i].Name == m2[i].Name && m1[i].Value == m2[i].Value && m1[i].IsRegex == m2[i].IsRegex) {
+		if !(*m1[i].IsEqual == *m2[i].IsEqual && *m1[i].Name == *m2[i].Name && *m1[i].Value == *m2[i].Value && *m1[i].IsRegex == *m2[i].IsRegex) {
 			return false
 		}
 	}
@@ -166,7 +166,7 @@ func (r *AlertmanagerReconciler) postSilence(ctx context.Context, existingSilenc
 	ps.Silence.Matchers = silence.Matchers.ToMatchers()
 
 	if existingSilence != nil {
-		if *existingSilence.Comment == comment && *existingSilence.CreatedBy == creator && compareMatchers(existingSilence.Matchers, ps.Silence.Matchers) {
+		if *existingSilence.Comment == comment && *existingSilence.CreatedBy == creator && isMatcherEqual(existingSilence.Matchers, ps.Silence.Matchers) {
 			if time.Time(*existingSilence.EndsAt).After(time.Now().UTC().Add(2 * time.Hour)) {
 				log.FromContext(ctx).Info("silence still valid for at least two hours, skipping", "namespace", om.GetNamespace(), "name", om.GetName(), "silenceId", *existingSilence.ID, "expiresAt", *existingSilence.EndsAt)
 				return *existingSilence.ID, nil
