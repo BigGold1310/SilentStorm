@@ -89,6 +89,57 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	for _, silence := range silenceList.Items {
+		oldStatus := silence.Status.DeepCopy()
+
+		alertmanagerReference := silentstormv1alpha1.FindAlertmanagerReference(silence.Status.AlertmanagerReferences, alertmanager.UID)
+		if alertmanagerReference == nil {
+			if silentstormv1alpha1.SetAlertmanagerReference(&silence.Status.AlertmanagerReferences, silentstormv1alpha1.NewAlertmanagerReference(*alertmanager)) {
+				alertmanagerReference = silentstormv1alpha1.FindAlertmanagerReference(silence.Status.AlertmanagerReferences, alertmanager.UID)
+			}
+		}
+
+		var existingSilence *amcmodels.GettableSilence
+		if alertmanagerReference.SilenceID != "" {
+			existingSilence, err = r.getSilenceByID(ctx, alertmanagerReference.SilenceID)
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed to get silence by id", "id", alertmanagerReference.SilenceID)
+			}
+		}
+		if existingSilence == nil {
+			existingSilence, err = r.searchSilence(ctx, silence.ObjectMeta)
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed to search silences for already existing one", "namespace", silence.GetNamespace(), "name", clusterSilence.GetName())
+				continue // Lets skip the rest of the loop as we anyway run into an error
+			}
+		}
+
+		// Add matcher for the actual namespace
+		// TODO: Maybe we should check if the matcher already exists
+		alertmanagerSilence := silence.Spec.AlertmanagerSilence
+		alertmanagerSilence.Matchers = append(alertmanagerSilence.Matchers, silentstormv1alpha1.Matcher{
+			IsEqual: true,
+			IsRegex: false,
+			Name:    "namespace",
+			Value:   silence.GetNamespace(),
+		})
+		silenceID, err := r.postSilence(ctx, existingSilence, alertmanagerSilence, silence.ObjectMeta)
+		if err != nil {
+			log.FromContext(ctx).Error(err, "failed to post silence", "namespace", silence.GetNamespace(), "name", silence.GetName())
+			alertmanagerReference.Status = err.Error() // TODO: Replace status with conditions
+		} else {
+			alertmanagerReference.Status = "Silenced" // TODO: introduce consts for better status tracking/consistency
+			alertmanagerReference.SilenceID = silenceID
+		}
+
+		if !equality.Semantic.DeepEqual(oldStatus, &silence.Status) {
+			err = r.Client.Status().Update(ctx, &silence)
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed update silence status with id", "namespace", silence.GetNamespace(), "name", silence.GetName(), "silenceId", silenceID)
+			}
+		}
+	}
+
 	clusterSilenceList := silentstormv1alpha1.ClusterSilenceList{}
 	err = r.Client.List(ctx, &clusterSilenceList, client.MatchingLabelsSelector{Selector: selector})
 	if err != nil {
