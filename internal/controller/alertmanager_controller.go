@@ -109,7 +109,7 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if existingSilence == nil {
 			existingSilence, err = r.searchSilence(ctx, silence.ObjectMeta)
 			if err != nil {
-				log.FromContext(ctx).Error(err, "failed to search silences for already existing one", "namespace", silence.GetNamespace(), "name", clusterSilence.GetName())
+				log.FromContext(ctx).Error(err, "failed to search silences for already existing one", "namespace", silence.GetNamespace(), "name", silence.GetName())
 				continue // Lets skip the rest of the loop as we anyway run into an error
 			}
 		}
