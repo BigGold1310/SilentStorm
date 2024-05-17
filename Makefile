@@ -236,4 +236,3 @@ $(HELMIFY): $(LOCALBIN)
 
 helm: manifests kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir -image-pull-secrets helm/silentstorm
-	rm -rf config/crd/bases
