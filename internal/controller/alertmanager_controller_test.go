@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package controller_test
 
 import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/biggold1310/silentstorm/internal/controller"
 
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
 	mock_alert "github.com/biggold1310/silentstorm/internal/mocks/alertmanager/alert"
@@ -73,7 +75,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			}
 
 			client, scheme := testutils.NewTestClient(alertmanager1)
-			reconciler := &AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
+			reconciler := &controller.AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
 
 			Expect(err).NotTo(HaveOccurred())
@@ -110,7 +112,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			}
 
 			client, scheme := testutils.NewTestClient(clusterSilence, alertmanager1)
-			reconciler := &AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
+			reconciler := &controller.AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
 
 			Expect(err).NotTo(HaveOccurred())
@@ -171,7 +173,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			}
 
 			client, scheme := testutils.NewTestClient(clusterSilence, alertmanager1)
-			reconciler := &AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
+			reconciler := &controller.AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
 
 			Expect(err).NotTo(HaveOccurred())
