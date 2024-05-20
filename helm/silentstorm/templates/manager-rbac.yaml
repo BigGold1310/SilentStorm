@@ -1,0 +1,51 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "silentstorm.fullname" . }}-manager-role
+  labels:
+  {{- include "silentstorm.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - alertmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - alertmanagers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - alertmanagers/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "silentstorm.fullname" . }}-manager-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: silentstorm
+    app.kubernetes.io/part-of: silentstorm
+  {{- include "silentstorm.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: '{{ include "silentstorm.fullname" . }}-manager-role'
+subjects:
+- kind: ServiceAccount
+  name: '{{ include "silentstorm.fullname" . }}-controller-manager'
+  namespace: '{{ .Release.Namespace }}'

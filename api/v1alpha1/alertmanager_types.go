@@ -20,16 +20,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // AlertmanagerSpec defines the desired state of Alertmanager
 type AlertmanagerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Address configures the HTTP API endpoint of the Alertmanager.
+	Address string `json:"address"`
+	// SilenceSelector selects which to which Alertmanager the silence should apply.
+	SilenceSelector metav1.LabelSelector `json:"silenceSelector"`
+	// Authentication configures how to authenticate with the Alertmanager. If omitted, no authentication is performed.
+	Authentication Authentication `json:"authentication,omitempty"`
+}
 
-	// Foo is an example field of Alertmanager. Edit alertmanager_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+// Authentication defines the possible authentication options.
+type Authentication struct {
+	// ServiceAccountRef enables bearer token authentication with the ServiceAccount token.
+	// The ServiceAccountRef is expected to be in the same namespace as this Alertmanager.
+	ServiceAccountRef string `json:"serviceAccountRef,omitempty"`
 }
 
 // AlertmanagerStatus defines the observed state of Alertmanager

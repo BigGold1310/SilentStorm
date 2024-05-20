@@ -60,7 +60,7 @@ var _ = Describe("controller", Ordered, func() {
 			var err error
 
 			// projectimage stores the name of the image used in the example
-			var projectimage = "example.com/silentstorm:v0.0.1"
+			projectimage := "example.com/silentstorm:v0.0.1"
 
 			By("building the manager(Operator) image")
 			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
@@ -70,14 +70,17 @@ var _ = Describe("controller", Ordered, func() {
 			By("loading the the manager(Operator) image on Kind")
 			err = utils.LoadImageToKindClusterWithName(projectimage)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("installing CRDs")
 			cmd = exec.Command("make", "install")
 			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
 
 			By("deploying the controller-manager")
 			cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectimage))
 			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
@@ -115,7 +118,6 @@ var _ = Describe("controller", Ordered, func() {
 				return nil
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
-
 		})
 	})
 })

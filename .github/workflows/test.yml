@@ -1,0 +1,57 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  basic:
+    name: basic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+      - uses: actions/checkout@v4
+      - run: go mod tidy && git diff --exit-code go.mod go.sum
+      - run: go run github.com/elastic/crd-ref-docs@v0.0.10 --config docs/config.yaml --renderer=markdown --output-path docs/api-reference.md
+  helm:
+    name: helm-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: helm lint helm/silentstorm/ --strict
+      - run: helm template chart helm/silentstorm > /dev/null
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54
+  ginkgo:
+    name: unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+      - uses: actions/checkout@v4
+      - run: go run github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 -r --randomize-all --randomize-suites --race --trace --fail-on-pending --keep-going --vet off --cover --skip-package ./test/e2e
+      - run: cat coverprofile.out | grep -v "zz_generated." > coverprofile.out.filtered
+      - uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: coverprofile.out.filtered
