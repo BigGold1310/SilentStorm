@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
+
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
 	mock_alert "github.com/biggold1310/silentstorm/internal/mocks/alertmanager/alert"
 	mock_alertgroup "github.com/biggold1310/silentstorm/internal/mocks/alertmanager/alertgroup"
@@ -39,7 +41,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 var _ = Describe("Alertmanager Controller", func() {
