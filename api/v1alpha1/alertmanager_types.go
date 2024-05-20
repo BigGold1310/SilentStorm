@@ -26,7 +26,7 @@ type AlertmanagerSpec struct {
 	Address string `json:"address"`
 	// SilenceSelector selects which to which Alertmanager the silence should apply.
 	SilenceSelector metav1.LabelSelector `json:"silenceSelector"`
-	// Authentication configures how to authenticate with the Alertmanager. If omited, no authentication is performed.
+	// Authentication configures how to authenticate with the Alertmanager. If omitted, no authentication is performed.
 	Authentication Authentication `json:"authentication,omitempty"`
 }
 

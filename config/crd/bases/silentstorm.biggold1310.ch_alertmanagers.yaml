@@ -44,7 +44,7 @@ spec:
                 type: string
               authentication:
                 description: Authentication configures how to authenticate with the
-                  Alertmanager. If omited, no authentication is performed.
+                  Alertmanager. If omitted, no authentication is performed.
                 properties:
                   serviceAccountRef:
                     description: |-
