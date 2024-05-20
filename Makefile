@@ -77,9 +77,16 @@ fmt: gofumpt ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+GINKGO ?= $(LOCALBIN)/ginkgo
+
+.PHONY: ginkgo
+ginkgo: $(GINKGO) ## Download helmify locally if necessary.
+$(GINKGO): $(LOCALBIN)
+	test -s $(LOCALBIN)/ginkgo || GOBIN=$(LOCALBIN) go install github.com/onsi/ginkgo/v2/ginkgo@v2.17.3
+
 .PHONY: test
 test: manifests generate fmt vet envtest mocks ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -r --randomize-all --randomize-suites --race --trace --fail-on-pending --keep-going --vet off --cover --skip-package ./test/e2e
 
 # generate mocks
 mocks: mockgen

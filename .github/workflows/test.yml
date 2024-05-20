@@ -50,7 +50,7 @@ jobs:
           go-version: '1.22'
           cache: false
       - uses: actions/checkout@v4
-      - run: go run github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 -r --randomize-all --randomize-suites --race --trace --fail-on-pending --keep-going --vet off --cover
+      - run: go run github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 -r --randomize-all --randomize-suites --race --trace --fail-on-pending --keep-going --vet off --cover --skip-package ./test/e2e
       - run: cat coverprofile.out | grep -v "zz_generated." > coverprofile.out.filtered
       - uses: shogo82148/actions-goveralls@v1
         with:
