@@ -32,13 +32,13 @@ rules:
   - patch
   - update
 - apiGroups:
-   - silentstorm.biggold1310.ch
-   resources:
-   - clustersilences
-   - silences
-   verbs:
-   - list
-   - watch
+  - silentstorm.biggold1310.ch
+  resources:
+  - clustersilences
+  - silences
+  verbs:
+  - list
+  - watch
 - apiGroups:
   - silentstorm.biggold1310.ch
   resources:
