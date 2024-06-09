@@ -2,11 +2,17 @@ apiVersion: silentstorm.biggold1310.ch/v1alpha1
 kind: ClusterSilence
 metadata:
   labels:
-    app.kubernetes.io/name: clustersilence
-    app.kubernetes.io/instance: clustersilence-sample
-    app.kubernetes.io/part-of: silentstorm
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: silentstorm
-  name: clustersilence-sample
+    aminstance: alertmanager-1
+  name: sample-clustersilence
 spec:
-  # TODO(user): Add fields here
+  comment: "Silence all warning and critical alerts for test environments"
+  creator: "clusteradmin@cluster.local"
+  matchers:
+    - isEqual: true
+      isRegex: true
+      name: "severity"
+      value: "(warning|critical)"
+    - isEqual: true
+      isRegex: true
+      name: "environment"
+      value: "(test|engineering|demo)"
