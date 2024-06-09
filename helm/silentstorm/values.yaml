@@ -31,8 +31,8 @@ controllerManager:
         drop:
         - ALL
     image:
-      repository: controller
-      tag: latest
+      repository: ghcr.io/biggold1310/silentstorm
+      tag: main
     resources:
       limits:
         cpu: 500m
