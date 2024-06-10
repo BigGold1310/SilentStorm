@@ -110,7 +110,7 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			existingSilence, err = r.searchSilence(ctx, silence.ObjectMeta)
 			if err != nil {
 				log.FromContext(ctx).Error(err, "failed to search silences for already existing one", "namespace", silence.GetNamespace(), "name", silence.GetName())
-				continue // Lets skip the rest of the loop as we anyway run into an error
+				continue // Let's skip the rest of the loop as we anyway run into an error
 			}
 		}
 
@@ -296,8 +296,8 @@ func (r *AlertmanagerReconciler) initAlertmanagerClient(ctx context.Context, ale
 
 		cr := clientruntime.New(url.Host, path, schemes)
 
-		if alertmanager.Spec.Authentication.ServiceAccountRef != "" {
-			token, err := r.getServiceAccountToken(ctx, alertmanager.GetNamespace(), alertmanager.Spec.Authentication.ServiceAccountRef)
+		if alertmanager.Spec.Authentication.ServiceAccountName != "" {
+			token, err := r.getServiceAccountToken(ctx, alertmanager.GetNamespace(), alertmanager.Spec.Authentication.ServiceAccountName)
 			if err != nil {
 				return err
 			}
