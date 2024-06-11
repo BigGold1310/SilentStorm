@@ -117,12 +117,24 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		// Add matcher for the actual namespace
 		// TODO: Maybe we should check if the matcher already exists
 		alertmanagerSilence := silence.Spec.AlertmanagerSilence
-		alertmanagerSilence.Matchers = append(alertmanagerSilence.Matchers, silentstormv1alpha1.Matcher{
-			IsEqual: true,
-			IsRegex: false,
-			Name:    "namespace",
-			Value:   silence.GetNamespace(),
-		})
+		exists := false
+		for _, matcher := range alertmanagerSilence.Matchers {
+			if matcher.Name == "namespace" {
+				exists = true
+				matcher.IsRegex = false
+				matcher.IsEqual = true
+				matcher.Value = silence.GetNamespace()
+			}
+		}
+		if !exists {
+			alertmanagerSilence.Matchers = append(alertmanagerSilence.Matchers, silentstormv1alpha1.Matcher{
+				IsEqual: true,
+				IsRegex: false,
+				Name:    "namespace",
+				Value:   silence.GetNamespace(),
+			})
+		}
+
 		silenceID, err := r.postSilence(ctx, existingSilence, alertmanagerSilence, silence.ObjectMeta)
 		if err != nil {
 			log.FromContext(ctx).Error(err, "failed to post silence", "namespace", silence.GetNamespace(), "name", silence.GetName())
