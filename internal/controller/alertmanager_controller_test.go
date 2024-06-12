@@ -75,7 +75,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			}
 
 			client, scheme := testutils.NewTestClient(alertmanager1)
-			reconciler := &controller.AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
+			reconciler := &controller.SilenceReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
 
 			Expect(err).NotTo(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			}
 
 			client, scheme := testutils.NewTestClient(clusterSilence, alertmanager1)
-			reconciler := &controller.AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
+			reconciler := &controller.SilenceReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
 
 			Expect(err).NotTo(HaveOccurred())
@@ -173,7 +173,7 @@ var _ = Describe("Alertmanager Controller", func() {
 			}
 
 			client, scheme := testutils.NewTestClient(clusterSilence, alertmanager1)
-			reconciler := &controller.AlertmanagerReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
+			reconciler := &controller.SilenceReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
 
 			Expect(err).NotTo(HaveOccurred())
