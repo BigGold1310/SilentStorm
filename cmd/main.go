@@ -19,9 +19,10 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"os"
+
 	"github.com/go-openapi/strfmt"
 	amc "github.com/prometheus/alertmanager/api/v2/client"
-	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.

@@ -30,3 +30,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - silences
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - silences/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - silentstorm.biggold1310.ch
+  resources:
+  - silences/status
+  verbs:
+  - get
+  - patch
+  - update

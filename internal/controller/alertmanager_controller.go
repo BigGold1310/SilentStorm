@@ -67,7 +67,7 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// TODO: Check alertmanager status (if we can reach it) and provide info to user
-	//r.Alertmanager.General.GetStatus()
+	// r.Alertmanager.General.GetStatus()
 
 	silenceList := silentstormv1alpha1.SilenceList{}
 	err = r.Client.List(ctx, &silenceList, client.MatchingLabelsSelector{Selector: selector})

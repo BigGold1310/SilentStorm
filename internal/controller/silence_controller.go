@@ -18,8 +18,9 @@ package controller
 
 import (
 	"context"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/equality"
