@@ -15,84 +15,65 @@ helm install silentstorm biggold1310/silentstorm
 
 ## Usage
 ### Getting Started
-This example will guide you through the process of setting up a basic HAProxy instance, configuring a frontend for receiving traffic, inspecting the generated HAProxy configuration, and making a sample request to demonstrate its functionality.
+This example will guide you through the process of setting up a basic Alertmanager with a ClusterSilence and Silence.
+Conceptually, the Alertmanager selects the ClusterSilences/Silences to be applied over the silenceSelector.
 
-1. Create a simple instance of the HAProxy by applying the following YAML manifest:
-    ```yaml
-    apiVersion: silentstorm.biggold1310.ch/v1alpha1
-    kind: Alertmanager
-    metadata:
-      name: example
-      namespace: default
-    spec:
-      address: "https://localhost:9001"
-      silenceSelector: 
+1. Create an Alertmanager instance by applying the following YAML manifest:
+   ```yaml
+   apiVersion: silentstorm.biggold1310.ch/v1alpha1
+   kind: Alertmanager
+   metadata:
+     name: sample-alertmanager
+   spec:
+     address: "http://alertmanager-1.alertmanager.svc.cluster.local:9093"
+     silenceSelector:
        matchLabels:
-         proxy.haproxy.com/instance: example
-    ```
+         aminstance: "alertmanager-1"
+   ```
 
-### Prerequisites
+2. Create a Silence (namespaced)
+   ```yaml
+   apiVersion: silentstorm.biggold1310.ch/v1alpha1
+   kind: Silence
+   metadata:
+      labels:
+         aminstance: alertmanager-1
+      name: sample-silence
+      namespace: sample-namespace
+   spec:
+      comment: "Silence all KubePodRestart alerts in sample-namespace."
+      creator: "namespaceuser@cluster.local"
+      matchers:
+         - isEqual: true
+           isRegex: false
+           name: "alertname"
+           value: "KubePodRestart"
+   ```
 
-- go version v1.20.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+3. Create a ClusterSilence
+   ```yaml
+   apiVersion: silentstorm.biggold1310.ch/v1alpha1
+   kind: ClusterSilence
+   metadata:
+      labels:
+         aminstance: alertmanager-1
+      name: sample-clustersilence
+   spec:
+      comment: "Silence all warning and critical alerts for test environments"
+      creator: "clusteradmin@cluster.local"
+      matchers:
+         - isEqual: true
+           isRegex: true
+           name: "severity"
+           value: "(warning|critical)"
+         - isEqual: true
+           isRegex: true
+           name: "environment"
+           value: "(test|engineering|demo)"
+   ```
 
-### To Deploy on the cluster
-
-**Build and push your image to the location specified by `IMG`:**
-
-```sh
-make docker-build docker-push IMG=<some-registry>/silentstorm:tag
-```
-
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
-
-**Install the CRDs into the cluster:**
-
-```sh
-make install
-```
-
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
-
-```sh
-make deploy IMG=<some-registry>/silentstorm:tag
-```
-
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-> privileges or be logged in as admin.
-
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
-```
-
-> **NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
+## Known limitations
+The current SilenceOperator won't delete managed silences while deleting the Alertmanager resource.
 
 ## Contributing
 
