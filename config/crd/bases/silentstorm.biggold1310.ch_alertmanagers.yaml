@@ -49,7 +49,7 @@ spec:
                   serviceAccountRef:
                     description: |-
                       ServiceAccountRef enables bearer token authentication with the ServiceAccount token.
-                      The ServiceAccountRef is expected to be in the same namespace as this Alertmanager.
+                      The ServiceAccountName is expected to be in the same namespace as this Alertmanager.
                     type: string
                 type: object
               silenceSelector:

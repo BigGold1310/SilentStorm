@@ -86,7 +86,8 @@ $(GINKGO): $(LOCALBIN)
 
 .PHONY: test
 test: manifests generate fmt vet envtest mocks ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -r --randomize-all --randomize-suites --race --trace --fail-on-pending --keep-going --vet off --cover --skip-package ./test/e2e
+    KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -i --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+
 
 # generate mocks
 mocks: mockgen

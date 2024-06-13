@@ -21,6 +21,9 @@ import (
 	"flag"
 	"os"
 
+	"github.com/go-openapi/strfmt"
+	amc "github.com/prometheus/alertmanager/api/v2/client"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -122,10 +125,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.AlertmanagerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err = (&controller.AlertmanagerReconciler{SharedReconciler: controller.SharedReconciler{
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		Alertmanager: amc.NewHTTPClient(strfmt.Default),
+	}}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
+		os.Exit(1)
+	}
+	if err = (&controller.SilenceReconciler{SharedReconciler: controller.SharedReconciler{
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		Alertmanager: amc.NewHTTPClient(strfmt.Default),
+	}}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
+		os.Exit(1)
+	}
+	if err = (&controller.SilenceReconciler{SharedReconciler: controller.SharedReconciler{
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		Alertmanager: amc.NewHTTPClient(strfmt.Default),
+	}}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Alertmanager")
 		os.Exit(1)
 	}
