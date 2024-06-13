@@ -18,34 +18,23 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	"net/url"
 	"time"
 
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
-	"github.com/go-openapi/strfmt"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	clientruntime "github.com/go-openapi/runtime/client"
-
-	amc "github.com/prometheus/alertmanager/api/v2/client"
 )
 
 // SilenceReconciler reconciles a Alertmanager object
 type AlertmanagerReconciler struct {
-	client.Client
-	Scheme       *runtime.Scheme
-	Alertmanager *amc.AlertmanagerAPI
+	SharedReconciler
 }
 
 //+kubebuilder:rbac:groups=silentstorm.biggold1310.ch,resources=alertmanagers,verbs=get;list;watch;create;update;patch;delete
@@ -71,10 +60,10 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		log.FromContext(ctx).Error(err, "failed to parse silence selector", "namespace", alertmanager.GetNamespace(), "name", alertmanager.GetName())
 	}
 
-	// TODO: Standardize as in SilenceReconciler or CLusterSilenceReconciler
-	err = r.initAlertmanagerClient(ctx, *alertmanager)
+	// Configure alertmanager in amc client
+	err = r.updateAlertmanagerClient(ctx, *alertmanager)
 	if err != nil {
-		return ctrl.Result{}, err
+		log.FromContext(ctx).Error(err, "Can't configure alertmanager client")
 	}
 
 	// TODO: Check alertmanager status (if we can reach it) and provide info to user
@@ -117,55 +106,6 @@ func (r *AlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	return ctrl.Result{RequeueAfter: 1 * time.Hour}, nil
-}
-
-func (r *AlertmanagerReconciler) initAlertmanagerClient(ctx context.Context, alertmanager silentstormv1alpha1.Alertmanager) error {
-	if r.Alertmanager == nil {
-		// Lets initialize the Alertmanager client. This functionality is mainly to allow unit testing.
-		url, err := url.Parse(alertmanager.Spec.Address)
-		if err != nil {
-			panic(err)
-		}
-
-		schemes := []string{"https"}
-		if url.Scheme != "" {
-			schemes = []string{url.Scheme}
-		}
-		path := "/api/v2"
-		if url.Path != "" {
-			path = url.Path
-		}
-
-		cr := clientruntime.New(url.Host, path, schemes)
-
-		if alertmanager.Spec.Authentication.ServiceAccountName != "" {
-			token, err := r.getServiceAccountToken(ctx, alertmanager.GetNamespace(), alertmanager.Spec.Authentication.ServiceAccountName)
-			if err != nil {
-				return err
-			}
-			clientruntime.BearerToken(token)
-		}
-
-		c := amc.New(cr, strfmt.Default)
-		r.Alertmanager = c
-	}
-	return nil
-}
-
-func (r *AlertmanagerReconciler) getServiceAccountToken(ctx context.Context, namespace, saName string) (string, error) {
-	// Fetch the Secret associated with the ServiceAccount
-	secret := &corev1.Secret{}
-	err := r.Client.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-token", saName), Namespace: namespace}, secret)
-	if err != nil {
-		return "", err
-	}
-
-	// Extract and return the token from the Secret
-	token, found := secret.Data[corev1.ServiceAccountTokenKey]
-	if !found {
-		return "", fmt.Errorf("service account token not found")
-	}
-	return string(token), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
