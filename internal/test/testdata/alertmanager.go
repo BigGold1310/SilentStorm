@@ -3,6 +3,7 @@ package testdata
 import (
 	silentstormv1alpha1 "github.com/biggold1310/silentstorm/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 func GenerateAlertmanager(name string) *silentstormv1alpha1.Alertmanager {
@@ -27,8 +28,8 @@ func GenerateClusterSilence(name string) *silentstormv1alpha1.ClusterSilence {
 			Kind:       "ClusterSilence",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: Namespace,
+			Name: name,
+			UID:  uuid.NewUUID(),
 		},
 		Spec: silentstormv1alpha1.ClusterSilenceSpec{
 			AlertmanagerSilence: silentstormv1alpha1.AlertmanagerSilence{

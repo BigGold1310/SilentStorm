@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/biggold1310/silentstorm/api/v1alpha1"
-	client2 "github.com/go-openapi/runtime/client"
+	oaclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	amc "github.com/prometheus/alertmanager/api/v2/client"
 	"github.com/prometheus/alertmanager/api/v2/client/silence"
@@ -118,7 +118,7 @@ func (r *SharedReconciler) updateAlertmanagerClient(ctx context.Context, alertma
 		path = aurl.Path
 	}
 
-	cr := client2.New(aurl.Host, path, schemes)
+	cr := oaclient.New(aurl.Host, path, schemes)
 
 	if alertmanager.Spec.Authentication.ServiceAccountName != "" {
 		var token string
@@ -126,7 +126,7 @@ func (r *SharedReconciler) updateAlertmanagerClient(ctx context.Context, alertma
 		if err != nil {
 			return err
 		}
-		client2.BearerToken(token)
+		oaclient.BearerToken(token)
 	}
 
 	r.Alertmanager.SetTransport(cr)
