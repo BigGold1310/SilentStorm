@@ -1,72 +1,82 @@
 # silentstorm
-// TODO(user): Add simple overview of use/purpose
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+SilentStorm is a Kubernetes Operator that simplifies the management of silences within your Kubernetes cluster. It
+provides Custom Resource Definitions (CRDs) for both Alertmanager and Silences, allowing you to declaratively configure
+them and ensure all alerts on an Alertmanager are silenced.
 
-## Getting Started
+## Installation
 
-### Prerequisites
-- go version v1.20.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+### Helm
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
-
-```sh
-make docker-build docker-push IMG=<some-registry>/silentstorm:tag
+```console
+helm repo add silentstorm https://biggold1310.github.io/silentstorm
+helm install silentstorm biggold1310/silentstorm
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified. 
-And it is required to have access to pull the image from the working environment. 
-Make sure you have the proper permission to the registry if the above commands don’t work.
+## Usage
+### Getting Started
+This example will guide you through the process of setting up a basic Alertmanager with a ClusterSilence and Silence.
+Conceptually, the Alertmanager selects the ClusterSilences/Silences to be applied over the silenceSelector.
 
-**Install the CRDs into the cluster:**
+1. Create an Alertmanager instance by applying the following YAML manifest:
+   ```yaml
+   apiVersion: silentstorm.biggold1310.ch/v1alpha1
+   kind: Alertmanager
+   metadata:
+     name: sample-alertmanager
+   spec:
+     address: "http://alertmanager-1.alertmanager.svc.cluster.local:9093"
+     silenceSelector:
+       matchLabels:
+         aminstance: "alertmanager-1"
+   ```
 
-```sh
-make install
-```
+2. Create a Silence (namespaced)
+   ```yaml
+   apiVersion: silentstorm.biggold1310.ch/v1alpha1
+   kind: Silence
+   metadata:
+      labels:
+         aminstance: alertmanager-1
+      name: sample-silence
+      namespace: sample-namespace
+   spec:
+      comment: "Silence all KubePodRestart alerts in sample-namespace."
+      creator: "namespaceuser@cluster.local"
+      matchers:
+         - isEqual: true
+           isRegex: false
+           name: "alertname"
+           value: "KubePodRestart"
+   ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+3. Create a ClusterSilence
+   ```yaml
+   apiVersion: silentstorm.biggold1310.ch/v1alpha1
+   kind: ClusterSilence
+   metadata:
+      labels:
+         aminstance: alertmanager-1
+      name: sample-clustersilence
+   spec:
+      comment: "Silence all warning and critical alerts for test environments"
+      creator: "clusteradmin@cluster.local"
+      matchers:
+         - isEqual: true
+           isRegex: true
+           name: "severity"
+           value: "(warning|critical)"
+         - isEqual: true
+           isRegex: true
+           name: "environment"
+           value: "(test|engineering|demo)"
+   ```
 
-```sh
-make deploy IMG=<some-registry>/silentstorm:tag
-```
-
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
-privileges or be logged in as admin.
-
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
-```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
+## Known limitations
+The current SilenceOperator won't delete managed silences while deleting the Alertmanager resource.
 
 ## Contributing
+
 // TODO(user): Add detailed information on how you would like others to contribute to this project
 
 **NOTE:** Run `make help` for more information on all potential `make` targets

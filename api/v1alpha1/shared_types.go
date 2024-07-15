@@ -106,10 +106,10 @@ type AlertmanagerReference struct {
 	Status string `json:"status,omitempty"`
 }
 
-// FindAlertmanagerReference returns the AlertmanagerReference for the given UID.
-func FindAlertmanagerReference(ars []AlertmanagerReference, uid types.UID) *AlertmanagerReference {
+// FindAlertmanagerReference returns the AlertmanagerReference for the given NamespacedName.
+func FindAlertmanagerReference(ars []AlertmanagerReference, namespacedName types.NamespacedName) *AlertmanagerReference {
 	for i := range ars {
-		if ars[i].UID == uid {
+		if ars[i].Name == namespacedName.Name && ars[1].Namespace == namespacedName.Namespace {
 			return &ars[i]
 		}
 	}
@@ -118,13 +118,13 @@ func FindAlertmanagerReference(ars []AlertmanagerReference, uid types.UID) *Aler
 
 // RemoveAlertmanagerReference removes the corresponding conditionType from conditions if present. Returns
 // true if it was present and got removed.
-func RemoveAlertmanagerReference(ars *[]AlertmanagerReference, uid types.UID) (removed bool) {
+func RemoveAlertmanagerReference(ars *[]AlertmanagerReference, namespacedName types.NamespacedName) (removed bool) {
 	if ars == nil || len(*ars) == 0 {
 		return false
 	}
 	newARs := make([]AlertmanagerReference, 0, len(*ars)-1)
 	for _, ar := range *ars {
-		if ar.UID != uid {
+		if ar.Name == namespacedName.Name && ar.Namespace == namespacedName.Namespace {
 			newARs = append(newARs, ar)
 		}
 	}
@@ -143,7 +143,7 @@ func SetAlertmanagerReference(ars *[]AlertmanagerReference, newAR AlertmanagerRe
 	if ars == nil {
 		return false
 	}
-	existingAR := FindAlertmanagerReference(*ars, newAR.UID)
+	existingAR := FindAlertmanagerReference(*ars, types.NamespacedName{Name: newAR.Name, Namespace: newAR.Namespace})
 	if existingAR == nil {
 		*ars = append(*ars, newAR)
 		return true
