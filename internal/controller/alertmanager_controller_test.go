@@ -111,6 +111,37 @@ var _ = Describe("Alertmanager Controller", func() {
 			Expect(len(updatedClusterSilence.Status.AlertmanagerReferences)).Should(Equal(1))
 			Expect(updatedClusterSilence.Status.AlertmanagerReferences[0].Name).Should(Equal("alertmanager-1"))
 		})
+		It("multiple Alertmanager should register on ClusterSilence", func() {
+			mockAlert.EXPECT().SetTransport(gomock.Any()).Return().AnyTimes()
+			clusterSilence := testdata.GenerateClusterSilence("clustersilence-1")
+			clusterSilence.ObjectMeta.SetLabels(map[string]string{"silence": "test-silence"})
+
+			alertmanager1 := testdata.GenerateAlertmanager("alertmanager-1")
+			alertmanager1.Spec.SilenceSelector = metav1.LabelSelector{
+				MatchLabels:      map[string]string{"silence": "test-silence"},
+				MatchExpressions: nil,
+			}
+			alertmanager2 := testdata.GenerateAlertmanager("alertmanager-2")
+			alertmanager2.Spec.SilenceSelector = metav1.LabelSelector{
+				MatchLabels:      map[string]string{"silence": "test-silence"},
+				MatchExpressions: nil,
+			}
+
+			client, scheme := testutils.NewTestClient(clusterSilence, alertmanager1, alertmanager2)
+			reconciler := &controller.AlertmanagerReconciler{SharedReconciler: controller.SharedReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}}
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-2", Namespace: testdata.Namespace}})
+			Expect(err).NotTo(HaveOccurred())
+
+			updatedClusterSilence := silentstormv1alpha1.ClusterSilence{}
+			err = client.Get(ctx, types.NamespacedName{Name: "clustersilence-1"}, &updatedClusterSilence)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(updatedClusterSilence.Status.AlertmanagerReferences)).Should(Equal(2))
+			Expect(updatedClusterSilence.Status.AlertmanagerReferences[0].Name).Should(Equal("alertmanager-1"))
+			Expect(updatedClusterSilence.Status.AlertmanagerReferences[1].Name).Should(Equal("alertmanager-2"))
+		})
 		It("should register itself on the Silence", func() {
 			mockAlert.EXPECT().SetTransport(gomock.Any()).Return().AnyTimes()
 			silence := testdata.GenerateSilence("silence-1")
@@ -132,6 +163,37 @@ var _ = Describe("Alertmanager Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(updatedSilence.Status.AlertmanagerReferences)).Should(Equal(1))
 			Expect(updatedSilence.Status.AlertmanagerReferences[0].Name).Should(Equal("alertmanager-1"))
+		})
+		It("multiple Alertmanager should register on Silence", func() {
+			mockAlert.EXPECT().SetTransport(gomock.Any()).Return().AnyTimes()
+			silence := testdata.GenerateSilence("silence-1")
+			silence.ObjectMeta.SetLabels(map[string]string{"silence": "test-silence"})
+
+			alertmanager1 := testdata.GenerateAlertmanager("alertmanager-1")
+			alertmanager1.Spec.SilenceSelector = metav1.LabelSelector{
+				MatchLabels:      map[string]string{"silence": "test-silence"},
+				MatchExpressions: nil,
+			}
+			alertmanager2 := testdata.GenerateAlertmanager("alertmanager-2")
+			alertmanager2.Spec.SilenceSelector = metav1.LabelSelector{
+				MatchLabels:      map[string]string{"silence": "test-silence"},
+				MatchExpressions: nil,
+			}
+
+			client, scheme := testutils.NewTestClient(silence, alertmanager1, alertmanager2)
+			reconciler := &controller.AlertmanagerReconciler{SharedReconciler: controller.SharedReconciler{Client: client, Alertmanager: amcmock, Scheme: scheme}}
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-1", Namespace: testdata.Namespace}})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "alertmanager-2", Namespace: testdata.Namespace}})
+			Expect(err).NotTo(HaveOccurred())
+
+			updateSilence := silentstormv1alpha1.Silence{}
+			err = client.Get(ctx, types.NamespacedName{Name: "silence-1", Namespace: testdata.Namespace}, &updateSilence)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(updateSilence.Status.AlertmanagerReferences)).Should(Equal(2))
+			Expect(updateSilence.Status.AlertmanagerReferences[0].Name).Should(Equal("alertmanager-1"))
+			Expect(updateSilence.Status.AlertmanagerReferences[1].Name).Should(Equal("alertmanager-2"))
 		})
 	})
 })
